@@ -1,0 +1,6 @@
+{
+  "name": "BarberCut",
+  "description": "Analizador de Inventario y Servicios con Clasificación ABC (Ley de Pareto) para Barberías y Estéticas",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
