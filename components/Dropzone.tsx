@@ -5,9 +5,70 @@
 
 import React, { useCallback, useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { UploadCloud, FileSpreadsheet, AlertCircle, Download, Users, Pencil } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, AlertCircle, Download, Users, Pencil, Sparkles } from 'lucide-react';
 import { parseCSV } from '../utils/csvParser';
 import { RawServiceData } from '../types';
+
+// Catálogo base de servicios de demostración (sin barbero asignado todavía)
+const DEMO_SERVICES: Omit<RawServiceData, 'barbero'>[] = [
+  { sku: 'BC001', nombre_servicio: 'Corte de Cabello Premium + Lavado', costo_unitario: 5, precio_venta: 25, unidades_vendidas: 420 },
+  { sku: 'BC002', nombre_servicio: 'Combo BarberCut: Corte, Barba y Facial', costo_unitario: 10, precio_venta: 45, unidades_vendidas: 280 },
+  { sku: 'BC003', nombre_servicio: 'Perfilado de Barba con Navaja y Toalla', costo_unitario: 3, precio_venta: 18, unidades_vendidas: 310 },
+  { sku: 'BC004', nombre_servicio: 'Corte de Cabello Clásico Tradicional', costo_unitario: 4, precio_venta: 20, unidades_vendidas: 390 },
+  { sku: 'BC005', nombre_servicio: 'Terapia Capilar Anticaída & Masaje', costo_unitario: 15, precio_venta: 60, unidades_vendidas: 95 },
+  { sku: 'BC006', nombre_servicio: 'Coloración de Cabello / Camuflaje de Canas', costo_unitario: 8, precio_venta: 35, unidades_vendidas: 110 },
+  { sku: 'BC007', nombre_servicio: 'Cera Moldeadora BarberCut Efecto Mate', costo_unitario: 4, precio_venta: 15, unidades_vendidas: 160 },
+  { sku: 'BC008', nombre_servicio: 'Aceite Orgánico de Cuidado Esencial', costo_unitario: 6, precio_venta: 22, unidades_vendidas: 90 },
+  { sku: 'BC009', nombre_servicio: 'Tratamiento Facial Purificante y Exfoliante', costo_unitario: 5, precio_venta: 28, unidades_vendidas: 105 },
+  { sku: 'BC010', nombre_servicio: 'Corte Infantil Estilo Libre (Menores)', costo_unitario: 3, precio_venta: 15, unidades_vendidas: 120 },
+  { sku: 'BC011', nombre_servicio: 'Delineado de Cejas Detallado', costo_unitario: 1.5, precio_venta: 10, unidades_vendidas: 140 },
+  { sku: 'BC012', nombre_servicio: 'Shampoo Revitalizante de Mentol', costo_unitario: 5, precio_venta: 18, unidades_vendidas: 60 },
+  { sku: 'BC013', nombre_servicio: 'Afeitado de Cabeza Completo con Toalla Caliente', costo_unitario: 4, precio_venta: 22, unidades_vendidas: 45 },
+  { sku: 'BC014', nombre_servicio: 'Mascarilla Negra de Carbón Activo Purificante', costo_unitario: 2, precio_venta: 12, unidades_vendidas: 70 },
+];
+
+// Reparte un total de unidades al azar entre los barberos ingresados,
+// asegurando que la suma final sea exactamente igual al total original.
+function repartirUnidadesAlAzar(total: number, barberos: string[]): { barbero: string; unidades: number }[] {
+  if (barberos.length === 0) return [];
+  if (barberos.length === 1) return [{ barbero: barberos[0], unidades: total }];
+
+  // Genera pesos aleatorios y los normaliza para repartir proporcionalmente el total
+  const pesos = barberos.map(() => Math.random());
+  const sumaPesos = pesos.reduce((a, b) => a + b, 0);
+
+  const partes = pesos.map((p) => Math.floor((p / sumaPesos) * total));
+  let restante = total - partes.reduce((a, b) => a + b, 0);
+
+  // Distribuye las unidades restantes (por redondeo) al azar, una por una
+  while (restante > 0) {
+    const idx = Math.floor(Math.random() * partes.length);
+    partes[idx] += 1;
+    restante -= 1;
+  }
+
+  return barberos.map((barbero, i) => ({ barbero, unidades: partes[i] })).filter((r) => r.unidades > 0);
+}
+
+// Construye el dataset de demostración, repartiendo cada servicio al azar
+// entre los barberos que el usuario ya ingresó en el paso anterior.
+function generarDatosDemo(barberos: string[]): RawServiceData[] {
+  const data: RawServiceData[] = [];
+  DEMO_SERVICES.forEach((servicio) => {
+    const reparto = repartirUnidadesAlAzar(servicio.unidades_vendidas, barberos);
+    reparto.forEach(({ barbero, unidades }) => {
+      data.push({
+        sku: servicio.sku,
+        nombre_servicio: servicio.nombre_servicio,
+        costo_unitario: servicio.costo_unitario,
+        precio_venta: servicio.precio_venta,
+        barbero,
+        unidades_vendidas: unidades,
+      });
+    });
+  });
+  return data;
+}
 
 interface DropzoneProps {
   barberos: string[];
@@ -53,6 +114,12 @@ export default function Dropzone({ barberos, onDataLoaded, onEditBarberos }: Dro
     },
     [barberos, onDataLoaded]
   );
+
+  const handleLoadDemoData = () => {
+    setError(null);
+    const demoData = generarDatosDemo(barberos);
+    onDataLoaded(demoData, ['Datos de demostración cargados exitosamente.']);
+  };
 
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -173,6 +240,14 @@ export default function Dropzone({ barberos, onDataLoaded, onEditBarberos }: Dro
           <p className="text-xs text-rose-300 leading-relaxed">{error}</p>
         </div>
       )}
+
+      <button
+        onClick={handleLoadDemoData}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-amber-400/20 bg-amber-400/5 text-xs font-semibold text-amber-400 hover:bg-amber-400/10 transition-colors"
+      >
+        <Sparkles className="h-3.5 w-3.5" />
+        Cargar Datos de Demostración
+      </button>
 
       <button
         onClick={handleDownloadTemplate}
