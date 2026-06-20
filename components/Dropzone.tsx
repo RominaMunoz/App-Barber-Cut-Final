@@ -137,13 +137,30 @@ export default function Dropzone({ barberos, onDataLoaded, onEditBarberos }: Dro
     e.target.value = '';
   };
 
-  // Genera una plantilla CSV vacía precargada con los nombres de barberos ya ingresados
+  // Genera una plantilla CSV precargada con los nombres de barberos y datos de ejemplo reales
+  // (en vez de filas con ceros) para que al abrirla se vea información útil.
   const handleDownloadTemplate = () => {
     const headers = ['sku', 'nombre_servicio', 'costo_unitario', 'precio_venta', 'barbero', 'unidades_vendidas'];
-    const rows: string[] = [headers.join(',')];
 
-    barberos.forEach((nombre) => {
-      rows.push(['001', 'Nombre del Servicio', '0', '0', `"${nombre.replace(/"/g, '""')}"`, '0'].join(','));
+    const escapeField = (value: string) => {
+      if (/[",\n]/.test(value)) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
+
+    const datosEjemplo = generarDatosDemo(barberos);
+
+    const rows: string[] = [headers.join(',')];
+    datosEjemplo.forEach((item) => {
+      rows.push([
+        escapeField(item.sku),
+        escapeField(item.nombre_servicio),
+        String(item.costo_unitario),
+        String(item.precio_venta),
+        escapeField(item.barbero),
+        String(item.unidades_vendidas),
+      ].join(','));
     });
 
     const csvContent = rows.join('\n');
